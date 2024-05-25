@@ -1,0 +1,1 @@
+enum GoogleSignInState { init, success, failure }
