@@ -1,11 +1,8 @@
 import 'dart:typed_data';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
 import 'package:nitro_corn/const.dart';
 import 'package:nitro_corn/loginScaffold.dart';
-import 'package:nitro_corn/utils.dart';
 
 class ImageUploadPage extends StatefulWidget {
   @override
@@ -16,36 +13,17 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
   List<Uint8List> _selectedImages = [];
   final int _minImageCount = 10;
 
-  Future<void> _selectImages() async {
-    List<Uint8List> images = [];
-
-    if (kIsWeb) {
-      // Web platform
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: true,
-      );
-
-      if (result != null) {
-        for (var file in result.files) {
-          images.add(file.bytes!);
-        }
-      }
-    } else {
-      // Mobile platform
-      final ImagePicker _picker = ImagePicker();
-      final List<XFile>? pickedFiles = await _picker.pickMultiImage();
-
-      if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        for (var file in pickedFiles) {
-          images.add(await file.readAsBytes());
-        }
-      }
+  void _handleImageUpload(html.FileUploadInputElement uploadInput) {
+    final List<html.File> files = uploadInput.files!;
+    for (var file in files) {
+      final reader = html.FileReader();
+      reader.onLoad.listen((event) {
+        setState(() {
+          _selectedImages.add(reader.result as Uint8List);
+        });
+      });
+      reader.readAsArrayBuffer(file);
     }
-
-    setState(() {
-      _selectedImages.addAll(images);
-    });
   }
 
   void _clearImages() {
@@ -127,7 +105,17 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                           8.0), // Adjust border radius as needed
                     ),
                     child: ElevatedButton.icon(
-                      onPressed: _selectImages,
+                      onPressed: () {
+                      html.FileUploadInputElement uploadInput =
+                          html.FileUploadInputElement();
+                      uploadInput.multiple = true;
+                      uploadInput.accept = 'image/*';
+                      uploadInput.click();
+
+                      uploadInput.onChange.listen((event) {
+                        _handleImageUpload(uploadInput);
+                      });
+                    },
                       icon: const Icon(Icons.file_present_outlined,
                           color: Colors.white), // Icon color
                       label: const Text('Upload Images',
@@ -139,29 +127,28 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                             0), // This removes any shadow
                       ),
                     ),
-                  )
-                else
-                  Column(
-                    children: [
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: _selectedImages.map((image) {
-                          return Image.memory(
-                            image,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
-                      if (_selectedImages.length < _minImageCount) ...[
-                        Text(
-                          'Please select at least $_minImageCount images. Currently selected: ${_selectedImages.length}',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                        const SizedBox(height: 20),
+                  ),
+                const SizedBox(height: 20),
+                if (_selectedImages.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _selectedImages.map((image) {
+                      return Image.memory(
+                        image,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  if(_selectedImages.length < _minImageCount)...[
+                      Text(
+                              'Please select at least $_minImageCount images. Currently selected: ${_selectedImages.length}',
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            const SizedBox(height: 20),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -173,7 +160,17 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                                 8.0), // Adjust border radius as needed
                           ),
                           child: ElevatedButton(
-                            onPressed: _selectImages,
+                            onPressed: () {
+                        html.FileUploadInputElement uploadInput =
+                            html.FileUploadInputElement();
+                        uploadInput.multiple = true;
+                        uploadInput.accept = 'image/*';
+                        uploadInput.click();
+
+                        uploadInput.onChange.listen((event) {
+                          _handleImageUpload(uploadInput);
+                        });
+                      },
                             style: ButtonStyle(
                               backgroundColor: MaterialStateProperty.all<Color>(
                                   Colors.transparent),
@@ -188,9 +185,9 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                             ),
                           ),
                         ),
-                      ],
-                      if (_selectedImages.length >= _minImageCount) ...[
-                        Container(
+                  ],
+                  if (_selectedImages.length >= _minImageCount) ...[
+                    Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: appBarGradientColors,
@@ -216,9 +213,13 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                             ),
                           ),
                         ),
-                      ],
-                      const SizedBox(height: 20),
-                      Container(
+
+                    
+                  ],
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: appBarGradientColors,
@@ -244,8 +245,7 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                ],
               ],
             ),
           ),
